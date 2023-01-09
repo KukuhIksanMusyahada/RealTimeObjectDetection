@@ -4,6 +4,8 @@ import cv2
 import uuid
 import time
 import os
+import traceback
+import sys
 
 from git.repo.base import Repo
 
@@ -67,6 +69,8 @@ class CreateTrainingImages:
         os.chdir(label_path)
         os.system('pyrcc5 -o libs/resources.py resources.qrc')
         os.system('python labelImg.py')
+        os.chdir('c:\\Users\\User\\Desktop\\Projects\\Jupyter\\Computer_Vision\\RealTimeObjectDetection\\RealTimeObjectDetection')
+            
 
 
 
