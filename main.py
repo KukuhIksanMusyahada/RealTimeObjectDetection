@@ -17,6 +17,14 @@ images_path = os.path.join(os.path.dirname( os.path.abspath(__file__) ),'images'
 captured_images = os.path.join(images_path,'captured_images')
 # colors = np.random.uniform(0,255,size= (len(labels)),3)
 
+CUSTOM_MODEL_NAME = 'efficient_det_models' 
+PRETRAINED_MODEL_NAME = 'efficientdet_d0_coco17_tpu-32'
+PRETRAINED_MODEL_URL = 'http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d0_coco17_tpu-32.tar.gz'
+TF_RECORD_SCRIPT_NAME = 'generate_tfrecord.py'
+LABEL_MAP_NAME = 'label_map.pbtxt'
+
+
+
 
 
 # Download and process the data
@@ -26,6 +34,8 @@ class CreateTrainingImages:
         self.init_labels = []
         self.num_imgs = 20
         self.add_label = True
+        self.train_ratio = 0.8
+        self.captured_images_path = os.path.join(self.path,'captured_imgs')
 
     def addLabel(self):
         while self.add_label:
@@ -37,11 +47,10 @@ class CreateTrainingImages:
                 self.add_label = False
     
     def createDir(self):
-        captured_images_path = os.path.join(self.path,'captured_imgs')
-        if not os.path.exists(captured_images_path):
-            os.mkdir(captured_images_path)
+        if not os.path.exists(self.captured_images_path):
+            os.mkdir(self.captured_images_path)
         for label in self.init_labels:
-            lab_path = os.path.join(captured_images_path, label)
+            lab_path = os.path.join(self.captured_images_path, label)
             if not os.path.exists(lab_path):
                 os.mkdir(lab_path)
 
@@ -70,7 +79,17 @@ class CreateTrainingImages:
         os.system('pyrcc5 -o libs/resources.py resources.qrc')
         os.system('python labelImg.py')
         os.chdir('c:\\Users\\User\\Desktop\\Projects\\Jupyter\\Computer_Vision\\RealTimeObjectDetection\\RealTimeObjectDetection')
-            
+    
+    def train_test_splits(self):
+        train_path = os.path.join(self.path,'train')
+        test_path = os.path.join(self.path,'test')
+        if not os.path.exists(train_path):
+            os.mkdir(train_path)
+        if not os.path.exists(test_path):
+            os.mkdir(test_path)
+        
+        
+
 
 
 
@@ -95,6 +114,20 @@ class CreateTrainingImages:
 
 # Get Model
 
+class GetAndTrainModels:
+    def __init__(self, paths = paths, files= files):
+        self.paths = paths
+        self.files = files
+
+    def create_path(self):
+        for path in self.paths.values():
+            if not os.path.exists(path):
+                os.mkdir(path)
+
+    
+    def run_models(self):
+        self.create_path()
+
 
 
 
@@ -109,5 +142,5 @@ class CreateTrainingImages:
 
 # Run
 if __name__=="__main__":
-    data = CreateTrainingImages()
-    data.createData()
+    # data = CreateTrainingImages()
+    # data.createData()
