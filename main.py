@@ -13,7 +13,8 @@ from git.repo.base import Repo
 
 np.random.seed(13618045)
 min_confidence = 0.3
-images_path = os.path.join(os.path.dirname( os.path.abspath(__file__) ),'images')
+work_space_path = os.path.dirname( os.path.abspath(__file__) ),
+# images_path = os.path.join(work_space_path ,'images')
 captured_images = os.path.join(images_path,'captured_images')
 # colors = np.random.uniform(0,255,size= (len(labels)),3)
 
@@ -23,7 +24,26 @@ PRETRAINED_MODEL_URL = 'http://download.tensorflow.org/models/object_detection/t
 TF_RECORD_SCRIPT_NAME = 'generate_tfrecord.py'
 LABEL_MAP_NAME = 'label_map.pbtxt'
 
+paths = {
+    'SCRIPTS_PATH': os.path.join(work_space_path,'TFscripts'),
+    'APIMODEL_PATH': os.path.join(work_space_path,'models'),
+    'ANNOTATION_PATH': os.path.join(work_space_path,'annotations'),
+    'IMAGE_PATH': os.path.join(work_space_path,'images'),
+    'MODEL_PATH': os.path.join(work_space_path,'models'),
+    'PRETRAINED_MODEL_PATH': os.path.join(work_space_path,'models','pre-trained-models'),
+    'CHECKPOINT_PATH': os.path.join(work_space_path,'models',CUSTOM_MODEL_NAME), 
+    'OUTPUT_PATH': os.path.join(work_space_path,'models',CUSTOM_MODEL_NAME, 'export'), 
+    'TFJS_PATH':os.path.join(work_space_path,'models',CUSTOM_MODEL_NAME, 'tfjsexport'), 
+    'TFLITE_PATH':os.path.join(work_space_path,'models',CUSTOM_MODEL_NAME, 'tfliteexport'), 
+    'PROTOC_PATH':os.path.join(work_space_path,'protoc')
+ }
 
+
+files = {
+    'PIPELINE_CONFIG':os.path.join(work_space_path,'models', CUSTOM_MODEL_NAME, 'pipeline.config'),
+    'TF_RECORD_SCRIPT': os.path.join(os.getcwd(),'SCRIPT', TF_RECORD_SCRIPT_NAME), 
+    'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], LABEL_MAP_NAME)
+}
 
 
 
@@ -143,4 +163,5 @@ class GetAndTrainModels:
 # Run
 if __name__=="__main__":
     # data = CreateTrainingImages()
-    # data.createData()
+    train  = GetAndTrainModels()
+    train.run_models()
