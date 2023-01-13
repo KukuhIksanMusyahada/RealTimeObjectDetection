@@ -74,6 +74,7 @@ class CreateTrainingImages:
         for path in self.path.values():
             if not os.path.exists(path):
                 os.mkdir(path)
+                
         for label in self.init_labels:
             lab_path = os.path.join(self.path['CAPTURED_IMAGES_PATH'], label)
             if not os.path.exists(lab_path):
@@ -198,3 +199,4 @@ class GetAndTrainModels:
 if __name__=="__main__":
     data = CreateTrainingImages()
     data.createData()
+    print('test')
