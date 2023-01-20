@@ -10,7 +10,11 @@ import shutil
 import random
 import re
 import object_detection
+import tensorflow as tf
 
+from object_detection.utils import config_util
+from object_detection.protos import pipeline_pb2
+from google.protobuf import text_format
 from git.repo.base import Repo
 
 # Set things up
@@ -25,7 +29,7 @@ PROTOC_PATH = 'C://Program Files//Google Protobuff//'
 # captured_images = os.path.join(images_path,'captured_images')
 # colors = np.random.uniform(0,255,size= (len(labels)),3)
 
-CUSTOM_MODEL_NAME = 'efficient_det_models' 
+CUSTOM_MODEL_NAME = 'efficientdet_d0_coco17_tpu-32' 
 PRETRAINED_MODEL_NAME = 'efficientdet_d0_coco17_tpu-32.tar.gz'
 PRETRAINED_MODEL_URL = 'http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d0_coco17_tpu-32.tar.gz'
 TF_RECORD_SCRIPT_NAME = 'generate_tfrecord.py'
@@ -43,17 +47,16 @@ paths = {
     'LABEL_APP_PATH' : os.path.join(work_space_path,'images','label_app'),
     'MODEL_PATH': os.path.join(work_space_path,'models'),
     'PRETRAINED_MODEL_PATH': os.path.join(work_space_path,'models','pre-trained-models'),
-    'CHECKPOINT_PATH': os.path.join(work_space_path,'models',CUSTOM_MODEL_NAME), 
+    'MY_MODEL_PATH' :   os.path.join(work_space_path,'models','my_models'),
+    'CHECKPOINT_PATH': os.path.join(work_space_path,'models','pre-trained-models',CUSTOM_MODEL_NAME,'checkpoint'), 
     'OUTPUT_PATH': os.path.join(work_space_path,'models',CUSTOM_MODEL_NAME, 'export'), 
-    'TFJS_PATH':os.path.join(work_space_path,'models',CUSTOM_MODEL_NAME, 'tfjsexport'), 
-    'TFLITE_PATH':os.path.join(work_space_path,'models',CUSTOM_MODEL_NAME, 'tfliteexport'), 
     'PROTOC_PATH':'C://Program Files//Google Protobuff'
  }
 
 
 files = {
-    'PIPELINE_CONFIG':os.path.join(work_space_path,'models', CUSTOM_MODEL_NAME, 'pipeline.config'),
-    'TF_RECORD_SCRIPT': os.path.join(os.getcwd(),'SCRIPT', TF_RECORD_SCRIPT_NAME), 
+    'PIPELINE_CONFIG':os.path.join(work_space_path,'models', 'pre-trained-models',CUSTOM_MODEL_NAME, 'pipeline.config'),
+    'TF_RECORD_SCRIPT': os.path.join(work_space_path,'TFscripts', TF_RECORD_SCRIPT_NAME), 
     'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], LABEL_MAP_NAME)
 }
 
@@ -205,11 +208,47 @@ class GetAndTrainModels:
                 f.write(f'\tname:\'{label}\'\n')
                 f.write(f'\tid:{id+1}\n')
                 f.write('}\n')
-        
+        if not os.path.exists(self.files['TF_RECORD_SCRIPT']):
+            Repo.clone_from('https://github.com/nicknochnack/GenerateTFRecord',self.paths['SCRIPTS_PATH'])
+        os.system(f"python {self.files['TF_RECORD_SCRIPT']} -x {os.path.join(self.paths['IMAGE_PATH'], 'train')} -l {self.files['LABELMAP']} -o {os.path.join(self.paths['ANNOTATION_PATH'], 'train.record')}")
+        os.system(f"python {self.files['TF_RECORD_SCRIPT']} -x {os.path.join(self.paths['IMAGE_PATH'], 'test')} -l {self.files['LABELMAP']} -o {os.path.join(self.paths['ANNOTATION_PATH'], 'test.record')}")
 
+    def update_config(self):
+        if not os.path.exists(self.paths['MY_MODEL_PATH']):
+            os.mkdir(self.paths['MY_MODEL_PATH'])
+        shutil.copy(self.files['PIPELINE_CONFIG'],self.paths['MY_MODEL_PATH'])
+        config = config_util.get_configs_from_pipeline_file(self.files['PIPELINE_CONFIG'])
+        pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+        with tf.io.gfile.GFile(self.files['PIPELINE_CONFIG'], "r") as f:                                                                                                                                                                                                                     
+            proto_str = f.read()                                                                                                                                                                                                                                          
+            text_format.Merge(proto_str, pipeline_config)
+        pipeline_config.model.ssd.num_classes = len(self.labels)
+        pipeline_config.train_config.batch_size = 4
+        pipeline_config.train_config.fine_tune_checkpoint = os.path.join(self.paths['PRETRAINED_MODEL_PATH'], PRETRAINED_MODEL_NAME[:-7], 'checkpoint', 'ckpt-0')
+        pipeline_config.train_config.fine_tune_checkpoint_type = "detection"
+        pipeline_config.train_input_reader.label_map_path= self.files['LABELMAP']
+        pipeline_config.train_input_reader.tf_record_input_reader.input_path[:] = [os.path.join(self.paths['ANNOTATION_PATH'], 'train.record')]
+        pipeline_config.eval_input_reader[0].label_map_path = self.files['LABELMAP']
+        pipeline_config.eval_input_reader[0].tf_record_input_reader.input_path[:] = [os.path.join(self.paths['ANNOTATION_PATH'], 'test.record')]
+        config_text = text_format.MessageToString(pipeline_config)                                                                                                                                                                                                        
+        with tf.io.gfile.GFile(self.files['PIPELINE_CONFIG'], "wb") as f:                                                                                                                                                                                                                     
+            f.write(config_text)   
     
+    def train_models(self):
+        TRAINING_SCRIPT = os.path.join(paths['APIMODEL_PATH'], 'research', 'object_detection', 'model_main_tf2.py')
+        os.system(f"python {TRAINING_SCRIPT} --model_dir={self.paths['MY_MODEL_PATH']} --pipeline_config_path={self.files['PIPELINE_CONFIG']} --num_train_steps=2000")
+        
+    
+    def evaluate_models(self):
+        TRAINING_SCRIPT = os.path.join(paths['APIMODEL_PATH'], 'research', 'object_detection', 'model_main_tf2.py')
+        os.system(f"python {TRAINING_SCRIPT} --model_dir={self.paths['MY_MODEL_PATH']} --pipeline_config_path={self.files['PIPELINE_CONFIG']} --checkpoint_dir={self.paths['MY_MODEL_PATH']}")
+
     def run_models(self):
-        pass
+        # self.download_all_needed_data()
+        # self.create_record()
+        self.update_config()
+        self.train_models()
+        self.evaluate_models()
 
 
 
@@ -245,5 +284,4 @@ if __name__=="__main__":
     # data = CreateTrainingImages()
     # data.createData()
     model = GetAndTrainModels()
-    model.download_all_needed_data()
-    model.create_record()
+    model.run_models()
